@@ -131,37 +131,48 @@ async function checkDailyTotal(goalSeconds: number, goalMinutes: number) {
       const currM = Math.floor((totalSeconds % 3600) / 60);
       const goalH = Math.floor(goalMinutes / 60);
       const goalM = goalMinutes % 60;
-      const currentDisplay = `${currH}:${currM.toString().padStart(2, '0')}`;
-      const goalDisplay = `${goalH}:${goalM.toString().padStart(2, '0')}`;
-      
+      const currentDisplay = `${currH}:${currM.toString().padStart(2, "0")}`;
+      const goalDisplay = `${goalH}:${goalM.toString().padStart(2, "0")}`;
+
       // Create progress bars
       const progressPercent = Math.min(100, (totalSeconds / goalSeconds) * 100);
-      
+
       // Progress bar for command line (60 chars)
       const consoleBarLength = 60;
-      const filledLength = Math.floor((progressPercent / 100) * consoleBarLength);
+      const filledLength = Math.floor(
+        (progressPercent / 100) * consoleBarLength,
+      );
       const emptyLength = consoleBarLength - filledLength;
-      const progressBar = '█'.repeat(filledLength) + '░'.repeat(emptyLength);
-      
+      const progressBar = "█".repeat(filledLength) + "░".repeat(emptyLength);
+
       // Calculate remaining time
       const remainingSeconds = Math.max(0, goalSeconds - totalSeconds);
       const remainingH = Math.floor(remainingSeconds / 3600);
       const remainingM = Math.floor((remainingSeconds % 3600) / 60);
-      const remainingDisplay = `${remainingH}:${remainingM.toString().padStart(2, '0')}`;
-      
+      const remainingDisplay = `${remainingH}:${remainingM
+        .toString()
+        .padStart(2, "0")}`;
+
       // Progress bar for window title (10 chars, ASCII chars for better spacing)
       const titleBarLength = 10;
-      const titleFilledLength = Math.floor((progressPercent / 100) * titleBarLength);
+      const titleFilledLength = Math.floor(
+        (progressPercent / 100) * titleBarLength,
+      );
       const titleEmptyLength = titleBarLength - titleFilledLength;
-      const titleProgressBar = '█'.repeat(titleFilledLength) + '▒'.repeat(titleEmptyLength);
-      
+      const titleProgressBar =
+        "█".repeat(titleFilledLength) + "▒".repeat(titleEmptyLength);
+
       // Update window title
-      process.stdout.write(`\x1b]0;(-${remainingDisplay}) [${titleProgressBar}]\x07`);
-      
-      const output = `[${new Date().toLocaleTimeString()}] [${progressBar}] ${progressPercent.toFixed(1)}% (${remainingDisplay} remaining)`;
-      
+      process.stdout.write(
+        `\x1b]0;(-${remainingDisplay}) [${titleProgressBar}]\x07`,
+      );
+
+      const output = `[${new Date().toLocaleTimeString()}] [${progressBar}] ${progressPercent.toFixed(
+        1,
+      )}% (${remainingDisplay} remaining)`;
+
       // Use \r to return to start of line and overwrite
-      process.stdout.write('\r' + output);
+      process.stdout.write("\r" + output);
       return false; // goal not yet reached
     }
   } catch (err: any) {
@@ -200,14 +211,12 @@ const goalSeconds = goalMinutes * 60;
 // Format goal display for initial message
 const goalH = Math.floor(goalMinutes / 60);
 const goalM = goalMinutes % 60;
-const goalDisplay = `${goalH}:${goalM.toString().padStart(2, '0')}`;
+const goalDisplay = `${goalH}:${goalM.toString().padStart(2, "0")}`;
 
-console.log(
-  `🎯 Goal: ${goalDisplay}`,
-);
+console.log(`🎯 Goal: ${goalDisplay}`);
 
 // Perform an initial check immediately, then schedule recurring checks
-checkDailyTotal(goalSeconds, goalMinutes).then((reached) => {
+checkDailyTotal(goalSeconds, goalMinutes).then(reached => {
   if (reached) {
     process.exit(0);
   }

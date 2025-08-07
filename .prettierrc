@@ -1,0 +1,12 @@
+{
+  "arrowParens": "avoid",
+  "trailingComma": "all",
+  "overrides": [
+    {
+      "files": "*.jsonc",
+      "options": {
+        "trailingComma": "none"
+      }
+    }
+  ]
+}

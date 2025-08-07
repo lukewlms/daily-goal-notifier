@@ -167,9 +167,12 @@ async function checkDailyTotal(goalSeconds: number, goalMinutes: number) {
         `\x1b]0;(-${remainingDisplay}) [${titleProgressBar}]\x07`,
       );
 
-      const output = `[${new Date().toLocaleTimeString()}] [${progressBar}] ${progressPercent.toFixed(
+      const output = `[${new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}] (${remainingDisplay} remaining) [${progressBar}] ${progressPercent.toFixed(
         1,
-      )}% (${remainingDisplay} remaining)`;
+      )}%`;
 
       // Use \r to return to start of line and overwrite
       process.stdout.write("\r" + output);
@@ -192,39 +195,47 @@ async function checkDailyTotal(goalSeconds: number, goalMinutes: number) {
   }
 }
 
-// Entry point: read goal from command-line argument
-const goalInput = process.argv[2];
-if (!goalInput) {
-  console.error(
-    "Usage: bun run index.ts <daily_goal_time>\nExample: bun run index.ts 6:00",
-  );
-  process.exit(1);
-}
-let goalMinutes: number;
-try {
-  goalMinutes = parseGoalTime(goalInput);
-} catch (e: any) {
-  console.error("❌ Could not parse goal time:", e.message);
-  process.exit(1);
-}
-const goalSeconds = goalMinutes * 60;
-// Format goal display for initial message
-const goalH = Math.floor(goalMinutes / 60);
-const goalM = goalMinutes % 60;
-const goalDisplay = `${goalH}:${goalM.toString().padStart(2, "0")}`;
-
-console.log(`🎯 Goal: ${goalDisplay}`);
-
-// Perform an initial check immediately, then schedule recurring checks
-checkDailyTotal(goalSeconds, goalMinutes).then(reached => {
-  if (reached) {
-    process.exit(0);
+// Main function
+async function main() {
+  // Read goal from command-line argument
+  const goalInput = process.argv[2];
+  if (!goalInput) {
+    console.error(
+      "Usage: bun run index.ts <daily_goal_time>\nExample: bun run index.ts 6:00",
+    );
+    process.exit(1);
   }
-});
-const interval = setInterval(async () => {
+  
+  let goalMinutes: number;
+  try {
+    goalMinutes = parseGoalTime(goalInput);
+  } catch (e: any) {
+    console.error("❌ Could not parse goal time:", e.message);
+    process.exit(1);
+  }
+  
+  const goalSeconds = goalMinutes * 60;
+  // Format goal display for initial message
+  const goalH = Math.floor(goalMinutes / 60);
+  const goalM = goalMinutes % 60;
+  const goalDisplay = `${goalH}:${goalM.toString().padStart(2, "0")}`;
+
+  console.log(`🎯 Goal: ${goalDisplay}`);
+
+  // Perform an initial check immediately, then schedule recurring checks
   const reached = await checkDailyTotal(goalSeconds, goalMinutes);
   if (reached) {
-    clearInterval(interval);
     process.exit(0);
   }
-}, 30000);
+  
+  const interval = setInterval(async () => {
+    const reached = await checkDailyTotal(goalSeconds, goalMinutes);
+    if (reached) {
+      clearInterval(interval);
+      process.exit(0);
+    }
+  }, 30000);
+}
+
+// Run main function
+main().catch(console.error);

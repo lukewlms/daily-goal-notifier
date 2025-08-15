@@ -117,8 +117,8 @@ async function checkDailyTotal(goalSeconds: number, goalMinutes: number) {
       const goalH = Math.floor(goalMinutes / 60);
       const goalM = goalMinutes % 60;
       const goalDisplay = goalM ? `${goalH}h ${goalM}m` : `${goalH}h`;
-      // Send macOS notification
-      const script = `display notification "You have reached your daily goal of ${goalDisplay}!" with title "Toggl Goal Met"`;
+      // Send persistent macOS notification
+      const script = `display alert "Toggl Goal Met" message "You have reached your daily goal of ${goalDisplay}!"`;
       exec(`osascript -e '${script}'`);
       const totalH = Math.floor(totalSeconds / 3600);
       const totalM = Math.floor((totalSeconds % 3600) / 60);
@@ -179,16 +179,43 @@ async function checkDailyTotal(goalSeconds: number, goalMinutes: number) {
       return false; // goal not yet reached
     }
   } catch (err: any) {
-    console.error("Error fetching Toggl data:", err.message || err);
+    const errorMsg = err.message || err;
     // If unauthorized (HTTP 401/403), exit the process to avoid looping indefinitely
     if (
-      err.message &&
-      (err.message.includes("401") || err.message.includes("403"))
+      errorMsg &&
+      (errorMsg.includes("401") || errorMsg.includes("403"))
     ) {
       console.error(
         "❌ Authentication failed. Please check your Toggl API token.",
       );
       process.exit(1);
+    }
+    // For connection-related errors, show a cleaner waiting message
+    if (
+      errorMsg &&
+      (errorMsg.includes("Unable to connect") ||
+        errorMsg.includes("ECONNREFUSED") ||
+        errorMsg.includes("ENOTFOUND") ||
+        errorMsg.includes("ECONNRESET") ||
+        errorMsg.includes("timeout") ||
+        errorMsg.includes("network") ||
+        errorMsg.includes("fetch failed") ||
+        errorMsg.includes("typo in the url") ||
+        errorMsg.includes("Failed to fetch") ||
+        errorMsg.includes("NetworkError"))
+    ) {
+      const waitingMsg = `[${new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}] (Waiting for connection...)`;
+      // Update title bar with waiting message
+      process.stdout.write("\x1b]0;(Waiting for connection...)\x07");
+      // Clear the entire line first, then show waiting message
+      process.stdout.write("\r" + " ".repeat(120) + "\r" + waitingMsg);
+    } else {
+      // For other errors, show the original error message but use \r to overwrite
+      process.stdout.write("\r" + " ".repeat(80) + "\r"); // Clear line first
+      console.error("Error fetching Toggl data:", errorMsg);
     }
     // Otherwise (network error, 5xx error), just log and continue to next interval
     return false;
@@ -220,7 +247,9 @@ async function main() {
   const goalM = goalMinutes % 60;
   const goalDisplay = `${goalH}:${goalM.toString().padStart(2, "0")}`;
 
-  console.log(`🎯 Goal: ${goalDisplay}`);
+  const debugInfo = process.env.DEBUG_POLL_INTERVAL_SEC ? 
+    ` (DEBUG: Poll Interval ${process.env.DEBUG_POLL_INTERVAL_SEC}s)` : '';
+  console.log(`🎯 Goal: ${goalDisplay}${debugInfo}`);
 
   // Perform an initial check immediately, then schedule recurring checks
   const reached = await checkDailyTotal(goalSeconds, goalMinutes);
@@ -228,13 +257,16 @@ async function main() {
     process.exit(0);
   }
   
+  const pollInterval = process.env.DEBUG_POLL_INTERVAL_SEC ? 
+    parseInt(process.env.DEBUG_POLL_INTERVAL_SEC, 10) * 1000 : 30000;
+  
   const interval = setInterval(async () => {
     const reached = await checkDailyTotal(goalSeconds, goalMinutes);
     if (reached) {
       clearInterval(interval);
       process.exit(0);
     }
-  }, 30000);
+  }, pollInterval);
 }
 
 // Run main function
